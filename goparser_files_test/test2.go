@@ -1,4 +1,9 @@
-var a int;
-var b int = 3;
-print a;
-print a + b;
+while i < n-1 {
+	write(v[i]); print " ";
+	if v[i] - v[i+1] > 0 {
+		print "Quicksort fallo";
+		write(i);
+		print "\n";
+	}
+	i = i + 1;
+}
