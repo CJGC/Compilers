@@ -13,7 +13,7 @@ func quicksort(l int, r int, a int[8192]) {
 			j = j - 1;
 		}
 		if i <= j {
-			tmp int = a[i];
+			var vmp int = a[i];
 			a[i] = a[j];
 			a[j] = tmp;
 			i = i + 1;
