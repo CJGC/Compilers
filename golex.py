@@ -34,7 +34,7 @@ reserved = {
     'func' : 'FUNC',
     'const' : 'CONST',
     'extern' : 'EXTERN',
-    #'return' : 'RETURN',
+    'return' : 'RETURN',
     #'write' : 'WRITE',
     #'read' : 'READ',
 }
@@ -65,7 +65,7 @@ tokens = [
     'ID',
 
     # Operatores y delimitadores
-    'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
+    'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULE',
     'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN', 'COMMA', 'LBRACKETS', 'RBRACKETS',
     'LBRACE', 'RBRACE',
 
@@ -86,6 +86,7 @@ t_PLUS      = r'\+'
 t_MINUS     = r'-'
 t_TIMES     = r'\*'
 t_DIVIDE    = r'/'
+t_MODULE    = r'\%'
 t_ASSIGN    = r'='
 #t_COLON     = r':'
 t_SEMI      = r';'
