@@ -128,7 +128,7 @@ def t_INTEGER_VALUE(t):
 escapes_not_b = r'nrt\"'
 def _replace_escape_codes(t):
     hex_codes = {'a':'a','b':'b','c':'c','d':'d','e':'e','f':'f','A':'A','B':'B','C':'C','D':'D','E':'E','F':'F','0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9'}
-    Not_b_codes = {'n':'\n','r':'\r','t':'\t','\\':'\\','"':'"'}
+    Not_b_codes = {'n':'\\n','r':'\\r','t':'\\t','\\':'\\\\','"':'\\"'}
     overflow,aux_string,index = False,"",0 # Cadena auxiliar e índice para recorrer la cadena vieja. overflow es una bandera que se activa en caso de desbordamiento.
     while index < len(t.value): # Mientras índice de cadena sea menor que el tamaño completo de la cadena.
         if t.value[index] == '\\': # Si detecta un \ en la cadena.
