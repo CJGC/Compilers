@@ -38,23 +38,6 @@ reserved = {
     'return' : 'RETURN',
 }
 
-# Lista de tipos
-statament_reserved = [
-    #'begin',
-    #'and',
-    #'not',
-    #'or',
-    #'int',
-    #'float',
-    #'bool',
-    #'then',
-    #'skip',
-    #'end',
-    #'break',
-    #'do',
-    #'for',
-]
-
 # Lista de tokens. Esta lista identifica la lista completa de nombres de
 # token que deben ser reconocidos por su lexer.  No cambie ninguno de
 # estos nombres. Si lo hace, se dañaran las pruebas unitarias.
@@ -74,7 +57,7 @@ tokens = [
     # Literales
     'FLOAT_VALUE','INTEGER_VALUE', 'STRING_VALUE', 'BOOLEAN_VALUE',
 
-] + list(reserved.values()) #statament_reserved
+] + list(reserved.values())
 # ----------------------------------------------------------------------
 # Ignora caracteres (whitespace)
 t_ignore = ' \t\r'
@@ -95,6 +78,7 @@ t_RBRACKETS = r'\]'
 t_LBRACE    = r'\{'
 t_RBRACE    = r'\}'
 t_COMMA     = r','
+
 # Tokens operadores lógicos
 t_LT        = r'<'
 t_LE        = r'<='
@@ -180,11 +164,7 @@ def t_BOOLEAN_VALUE(t):
 # o subrayado desde de ella.
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
-    #r'[\w_][\w\d_]*'
-    #print t.value
     t.type = reserved.get(t.value,'ID')
-    #if t.value in statament_reserved:   t.type = str(t.value)
-    #else:   t.type = reserved.get(t.type,'ID')
     return t
 
 operators = {
