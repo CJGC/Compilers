@@ -5,6 +5,6 @@ func main() {
 	print a[0];
 	print a[1];
 	print a;
-	x = x[22];
+	x := [x+1]int;
 	print primes;
 }
