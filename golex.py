@@ -29,14 +29,13 @@ reserved = {
     'if' : 'IF',
     'else' : 'ELSE',
     'while' : 'WHILE',
+    'for' : 'FOR',
     'print' : 'PRINT',
     'var' : 'VAR',
     'func' : 'FUNC',
     'const' : 'CONST',
     'extern' : 'EXTERN',
     'return' : 'RETURN',
-    #'write' : 'WRITE',
-    #'read' : 'READ',
 }
 
 # Lista de tipos
@@ -59,14 +58,13 @@ statament_reserved = [
 # Lista de tokens. Esta lista identifica la lista completa de nombres de
 # token que deben ser reconocidos por su lexer.  No cambie ninguno de
 # estos nombres. Si lo hace, se dañaran las pruebas unitarias.
-#'COLON' -> must be on tokens
 tokens = [
     # keyword
     'ID',
 
     # Operatores y delimitadores
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULE',
-    'ASSIGN', 'SEMI', 'LPAREN', 'RPAREN', 'COMMA', 'LBRACKETS', 'RBRACKETS',
+    'ASSIGN','COLON','SEMI', 'LPAREN', 'RPAREN', 'COMMA', 'LBRACKETS', 'RBRACKETS',
     'LBRACE', 'RBRACE',
 
     # Operadores lógicos
@@ -88,7 +86,7 @@ t_TIMES     = r'\*'
 t_DIVIDE    = r'/'
 t_MODULE    = r'\%'
 t_ASSIGN    = r'='
-#t_COLON     = r':'
+t_COLON     = r':'
 t_SEMI      = r';'
 t_LPAREN    = r'\('
 t_RPAREN    = r'\)'
