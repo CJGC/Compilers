@@ -25,11 +25,11 @@ from errors import error
 from ply.lex import lex
 # ----------------------------------------------------------------------
 # Diccionario de stataments
+# removido FOR
 reserved = {
     'if' : 'IF',
     'else' : 'ELSE',
     'while' : 'WHILE',
-    'for' : 'FOR',
     'print' : 'PRINT',
     'var' : 'VAR',
     'func' : 'FUNC',
@@ -41,13 +41,15 @@ reserved = {
 # Lista de tokens. Esta lista identifica la lista completa de nombres de
 # token que deben ser reconocidos por su lexer.  No cambie ninguno de
 # estos nombres. Si lo hace, se dañaran las pruebas unitarias.
+
+# removido COLON, LBRACKETS, RBRACKETS
 tokens = [
     # keyword
     'ID',
 
     # Operatores y delimitadores
     'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULE',
-    'ASSIGN','COLON','SEMI', 'LPAREN', 'RPAREN', 'COMMA', 'LBRACKETS', 'RBRACKETS',
+    'ASSIGN','SEMI', 'LPAREN', 'RPAREN', 'COMMA',
     'LBRACE', 'RBRACE',
 
     # Operadores lógicos
@@ -69,12 +71,12 @@ t_TIMES     = r'\*'
 t_DIVIDE    = r'/'
 t_MODULE    = r'\%'
 t_ASSIGN    = r'='
-t_COLON     = r':'
+#t_COLON     = r':'
 t_SEMI      = r';'
 t_LPAREN    = r'\('
 t_RPAREN    = r'\)'
-t_LBRACKETS = r'\['
-t_RBRACKETS = r'\]'
+#t_LBRACKETS = r'\['
+#t_RBRACKETS = r'\]'
 t_LBRACE    = r'\{'
 t_RBRACE    = r'\}'
 t_COMMA     = r','
@@ -141,7 +143,7 @@ def _replace_escape_codes(t):
     t.value = aux_string #Finalmente actualiza el contenido de t.value con lo códigos de caracter sustituidos.
 
 def t_STRING_VALUE(t):
-    r'".*"'
+    r'"[\d\w \+\-\*\\%\.,\-_\?\:;<>=\{\}\[\]\(\)~\'¿/\|!¡#$&=¬°@]*"'
     # Convierte t.value dentro de una cadena con códigos de escape reemplazados por valores actuales.
     t.value = t.value[1:-1]
     _replace_escape_codes(t)    # Debe implementarse antes
@@ -155,6 +157,8 @@ def t_STRING_UNTERM(t):
 #           Expresión regular para Booleanos
 def t_BOOLEAN_VALUE(t):
     r'true|false'
+    if t.value == 'true': t.value = True
+    else: t.value = False
     return t
 # ----------------------------------------------------------------------
 # Identificadores y keywords.
@@ -167,25 +171,25 @@ def t_ID(t):
     t.type = reserved.get(t.value,'ID')
     return t
 
-operators = {
-    r'\+'  : "PLUS",
-    r'-'  : "MINUS",
-    r'\*'  : "TIMES",
-    r'/'  : "DIVIDE",
-    r'='  : "ASSIGN",
-    r';'  : "SEMI",
-    r'('  : "LPAREN",
-    r')'  : "RPAREN",
-    r','  : "COMMA",
-    r'<'  : "LT",
-    r'<=' : "LE",
-    r'==' : "EQ",
-    r'>=' : "GE",
-    r'>'  : "GT",
-    r'!=' : "NE",
-    r'&&' : "LAND",
-    r'\|\|' : "LOR",
-    r'!'  : "LNOT"
+operators = {# Se utilizará para el analizador semántico, se eliminaron r''
+    '+'  : "PLUS",
+    '-'  : "MINUS",
+    '*'  : "TIMES",
+    '/'  : "DIVIDE",
+    '='  : "ASSIGN",
+    ';'  : "SEMI",
+    '('  : "LPAREN",
+    ')'  : "RPAREN",
+    ','  : "COMMA",
+    '<'  : "LT",
+    '<=' : "LE",
+    '==' : "EQ",
+    '>=' : "GE",
+    '>'  : "GT",
+    '!=' : "NE",
+    '&&' : "LAND",
+    '\|\|' : "LOR",
+    '!'  : "LNOT",
 }
 
 # ----------------------------------------------------------------------
