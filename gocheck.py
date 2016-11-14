@@ -214,7 +214,7 @@ class CheckProgramVisitor(NodeVisitor):
             self.visit(node.typename)
             node.type = node.typename.type
             if self.current.lookup(node.id):
-                error(node.lineno, "Error, la función extern %s ya había sido declarada antes" % node.id)
+                error(node.lineno, "Error, la función extern '%s' ya había sido declarada antes" % node.id)
             else:
                 self.current.add(node.id,node) # guardando el id de la función y el objeto
             self.visit(node.params)
