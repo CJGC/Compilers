@@ -98,7 +98,7 @@ class CheckProgramVisitor(NodeVisitor):
         def visit_IfStatement(self, node):
             self.visit(node.condition)
             if not node.condition.type == gotype.boolean_type:
-                error(node.lineno, "Expresión booleana no válida en la declaración if")
+                error(node.lineno, "Error, expresión booleana no válida en la declaración if")
             else:
                 self.visit(node.then_b)
                 if node.else_b:
@@ -107,7 +107,7 @@ class CheckProgramVisitor(NodeVisitor):
         def visit_WhileStatement(self,node):
             self.visit(node.condition)
             if not node.condition.type == gotype.boolean_type:
-                error(node.lineno, "Expresión boolena no válida en la definición del while")
+                error(node.lineno, "Error, expresión boolena no válida en la definición del while")
             else:
                 self.make_Symtab_statements("while",node)
 
@@ -115,7 +115,7 @@ class CheckProgramVisitor(NodeVisitor):
             self.visit(node.left)
             # 1. Asegúrese que la operación es compatible con el tipo
             if not golex.operators[node.op] in node.left.type.un_ops:
-                error(node.lineno, "Operación unaria no soportada con este tipo")
+                error(node.lineno, "Error, operación unaria no soportada con este tipo")
             # 2. Ajuste el tipo resultante al mismo del operando
             node.type = node.left.type
 
@@ -124,10 +124,10 @@ class CheckProgramVisitor(NodeVisitor):
             self.visit(node.right)
             # 1. Asegúrese que los operandos left y right tienen el mismo tipo
             if not node.left.type == node.right.type:
-                error(node.lineno, "Los operandos binarios no son del mismo tipo")
+                error(node.lineno, "Error, los operandos binarios no son del mismo tipo")
             # 2. Asegúrese que la operación está soportada
             elif not golex.operators[node.op] in node.left.type.bin_ops:
-                error(node.lineno, "Operación no soportada con este tipo")
+                error(node.lineno, "Error, operación no soportada con este tipo")
             # 3. Asigne el tipo resultante
             node.type = node.left.type
 
@@ -157,7 +157,7 @@ class CheckProgramVisitor(NodeVisitor):
             node.type = node.typename.type
             # 1. Revise que el nombre de la variable no se ha definido
             if self.current.lookup(node.id): # se cambió symtab como current (current contiene la tabla de símbolos de program, y mira si la variable ya está en la tabla)
-                error(node.lineno, "Error, la variable '%s' ya habia sido definido antes, error en la línea '%s'" % node.id) # se corrigió node.lineno a node.value.lineno
+                error(node.lineno, "Error, la variable '%s' ya habia sido definido antes" % node.id)
                 #assert None, "El símbolo '%s' ya habia sido definido antes, error en la línea '%s'" % (node.id,node.lineno)
             # 2. Agrege la entrada a la tabla de símbolos
             else:
@@ -214,7 +214,7 @@ class CheckProgramVisitor(NodeVisitor):
             self.visit(node.typename)
             node.type = node.typename.type
             if self.current.lookup(node.id):
-                error(node.lineno, "La función %s ya había sido declarada antes" % node.id)
+                error(node.lineno, "Error, la función extern %s ya había sido declarada antes" % node.id)
             else:
                 self.current.add(node.id,node) # guardando el id de la función y el objeto
             self.visit(node.params)
@@ -236,9 +236,9 @@ class CheckProgramVisitor(NodeVisitor):
             self.visit(node.left)
             self.visit(node.right)
             if not node.left.type == node.right.type:
-                error(node.lineno, "Operandos de relación no son del mismo tipo")
+                error(node.lineno, "Error, operandos de relación no son del mismo tipo")
             elif not golex.operators[node.op] in node.left.type.bin_ops:
-                error(node.lineno, "Los operandos de la relación no tienen soporte con el operando '%s'" % node.op)
+                error(node.lineno, "Error, los operandos de la relación no tienen soporte con el operando '%s'" % node.op)
             node.type = self.current.lookup('bool')
 
         def visit_FunCall(self, node):
