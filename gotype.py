@@ -14,7 +14,7 @@ class GoType(object):
                 self.un_ops = un_ops
 
 int_type = GoType("int",
-        set(('PLUS', 'MINUS', 'TIMES', 'DIVIDE','LE', 'LT', 'EQ', 'NE', 'GT', 'GE')),
+        set(('PLUS', 'MINUS', 'TIMES', 'DIVIDE','MODULE','LE', 'LT', 'EQ', 'NE', 'GT', 'GE')),
         set(('PLUS', 'MINUS')),
         )
 float_type = GoType("float",
