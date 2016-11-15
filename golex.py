@@ -190,6 +190,7 @@ operators = {# Se utilizará para el analizador semántico, se eliminaron r''
     '&&' : "LAND",
     '\|\|' : "LOR",
     '!'  : "LNOT",
+    '%' : "MODULE",
 }
 
 # ----------------------------------------------------------------------
