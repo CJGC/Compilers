@@ -31,16 +31,16 @@ class SymbolTable(object):
             #print "Error no se puede redefinir tipos de datos de variables, constantes o funciones ya previamente definidas"
 
         # se agregó nameStatementAsociated como atributo
-        def __init__(self, nameStatementAsociated,parent=None):
+        def __init__(self,parent=None):
             '''
             Crea una tabla de símbolos vacia con la tabla padre dada
             '''
             self.symtab = {} # tabla de símbolos para ese statement en cuestión
-            self.nameStatementAsociated = {nameStatementAsociated:self.symtab} # asocia una tabla de símbolos con un nombre del statement al que pertenece
             self.parent = parent # si padre es != None, entonces es porque este statement en cuestión tiene padre y lo debe tener en cuenta
             if self.parent != None: # si ese statement es hijo (program, if, else, while -> statements que pueden contener otros statements con hijos, ejemplo if anidados)
                 self.parent.children.append(self) # métalo como hijo, en la lista children de su padre
             self.children = [] # lista children que contendra los hijos de un statement si los llega a tener
+            self.returnsSet = [] # conjunto de posibles returns que podría tener un statement en cuestión
 
         def add(self, a, v): # a -> ID asociado al nodo, v -> Nodo
             '''
@@ -76,15 +76,15 @@ class CheckProgramVisitor(NodeVisitor):
             # Inicializa la tabla de símbolos
             self.current = None # Atributo current que es la tabla de símbolos actual (None porque no ha sido creada aún para 'Program')
 
-        def push_symtab(self, nameStatementAsociated, node):
-            self.current = SymbolTable(nameStatementAsociated,self.current) # crea una tabla de símbolos y la asigna como actual
+        def push_symtab(self, node):
+            self.current = SymbolTable(self.current) # crea una tabla de símbolos y la asigna como actual
             node.symtab = self.current # guarda ésta tabla de símbolos en el nodo asociado (ver goast.py AST attributes)
 
         def pop_symbol(self):
             self.current = self.current.parent # actualiza como tabla de símbolos actual, la tabla del padre asociado del nodo actual, (por ejemplo if's anidados)
 
         def visit_Program(self,node):
-            self.push_symtab('program',node) # el segundo parámetro es el nombre del nodo con el que se asociará la tabla de símbolos
+            self.push_symtab(node) # el segundo parámetro es el nombre del nodo con el que se asociará la tabla de símbolos
             # Agrega nombre de tipos incorporados ((int, float, string) a la  tabla de símbolos
             node.symtab.add("int",gotype.int_type)
             node.symtab.add("float",gotype.float_type)
@@ -109,7 +109,7 @@ class CheckProgramVisitor(NodeVisitor):
             if not node.condition.type == gotype.boolean_type:
                 error(node.lineno, "Error, expresión boolena no válida en la definición del while")
             else:
-                self.make_Symtab_statements("while",node)
+                self.make_Symtab_statements(node)
 
         def visit_UnaryOp(self, node):
             self.visit(node.left)
@@ -265,8 +265,8 @@ class CheckProgramVisitor(NodeVisitor):
 #                                               Anexos
 # ------------------------------------------------------------------------------------------------
 
-        def make_Symtab_statements(self, nameStatementAsociated ,node):
-            self.push_symtab(nameStatementAsociated, node) # crear la tabla de símbolos para statements y configurar current con esa tabla
+        def make_Symtab_statements(self,node):
+            self.push_symtab(node) # crear la tabla de símbolos para statements y configurar current con esa tabla
             # establecer los tipos nativos de go en la nueva tabla de símbolos
             node.symtab.add("int",gotype.int_type)
             node.symtab.add("float",gotype.float_type)
@@ -276,10 +276,10 @@ class CheckProgramVisitor(NodeVisitor):
             self.pop_symbol() # finalmente una vez que haya sido visitado los statements, actualize a la tabla de símbolos de program
 
         def visit_ThenIf(self, node):
-            self.make_Symtab_statements('if',node)
+            self.make_Symtab_statements(node)
 
         def visit_ThenElse(self,node):
-            self.make_Symtab_statements('else',node)
+            self.make_Symtab_statements(node)
 
         def visit_FuncDeclaration(self,node):
             # 1. comprobar si el tipo que retorna (si existe) es nativo de go
@@ -297,39 +297,39 @@ class CheckProgramVisitor(NodeVisitor):
                 self.current.add(node.id,node) # guardando el id de la función y el objeto en la tabla de su padre
 
             # 3. crear tabla de símbolos para el cuerpo de la función
-            self.push_symtab('function',node)
+            self.push_symtab(node)
             node.symtab.add("int",gotype.int_type)
             node.symtab.add("float",gotype.float_type)
             node.symtab.add("string",gotype.string_type)
             node.symtab.add("bool",gotype.boolean_type)
+
             # 4. comprobar parámetros de función y anexarlos a la tabla de símbolos
             self.visit(node.parameters)
 
             # 5. comprobar cuerpo de la función
             self.visit(node.statements)
 
-            # 6. comprobar return
-            node.return_type = self.current.lookup("ReturnType") # regresa el tipo de retorno si hubo alguno
-            lineno_return_type = self.current.lookup("ReturnTypeLineno") # regresa la línea donde está el retorno
-            if node.type != None: # si la función se definió para retornar algo
-                if node.return_type != None: # si existe un retorno, comprueba si su tipo de dato concuerda con el tipo que debe retornar la función
-                    assert node.type == node.return_type , "El valor del retorno de la función debe coincidir con el tipo de dato con la que fue definida, error en la línea %s" % lineno_return_type
-                else: # si no hay retorno
-                    if node.type != None: # Pero la función debería retornar algo
-                        assert None, "La función debería contener un retorno del tipo en la que fue definida, error en la línea %s" % (node.lineno)
-            else: # si la función no se definió para retornar pero
-                if node.return_type != None: # existe un return dentro de la función
-                    assert None, "Se está definiendo un retorno sin que la función deba devolver algo, error en la línea %s" % (node.lineno)
+            # 6. comprobar returns asociados
+            # comprobar los return propios del cuerpo de la función
+            if len(self.current.returnsSet) == 0 and node.type != None:
+                assert None, "La función debería contener almenos un retorno del tipo en la que fue definida, error en la línea %s" % node.lineno
+            for return_ste in self.current.returnsSet:
+                assert node.type, "Se está definiendo un retorno sin que la función deba devolver algo, error en la línea %s" % return_ste.lineno
+                assert return_ste.type == node.type, "El valor del retorno de la función debe coincidir con el tipo de dato con la que fue definida, error en la línea %s" % return_ste.lineno
+
+            # comprobar los return de los statements con tabla de símbolos contenidas en la función
+            for child in self.current.children:
+                for return_ste in child.returnsSet:
+                    assert node.type, "Se está definiendo un retorno sin que la función deba devolver algo, error en la línea %s" % return_ste.lineno
+                    assert return_ste.type == node.type, "El valor del retorno de la función debe coincidir con el tipo de dato con la que fue definida, error en la línea %s" % return_ste.lineno
 
             # 7. entregar dominio a tabla de símbolos program
             self.pop_symbol()
 
         def visit_ReturnStatement(self,node):
-            assert 'function' in self.current.nameStatementAsociated, "La declaración return debería estar en el cuerpo de una función, error en la línea %s" %node.lineno
-            self.visit(node.expression)
+            self.visit(node.expression) # visitand la expression para saber que tipo retorna
             node.type = node.expression.type # capturando el tipo que devuelve la expresión del return
-            self.current.symtab["ReturnType"] = node.type # anexando a la tabla de símbolos el tipo que retorna la función
-            self.current.symtab["ReturnTypeLineno"] = node.lineno # capturando el número de línea del return en el tipo que retorna
+            self.current.returnsSet.append(node) # concatenando el return al statement asociado
 
         def visit_Group(self,node):
             self.visit(node.expression)
