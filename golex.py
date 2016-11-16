@@ -143,7 +143,7 @@ def _replace_escape_codes(t):
     t.value = aux_string #Finalmente actualiza el contenido de t.value con lo códigos de caracter sustituidos.
 
 def t_STRING_VALUE(t):
-    r'"[\d\w \+\-\*\\%\.,\-_\?\:;<>=\{\}\[\]\(\)~\'¿/\|!¡#$&=¬°@]*"'
+    r'"[^\n]*?(?<!\\)"'
     # Convierte t.value dentro de una cadena con códigos de escape reemplazados por valores actuales.
     t.value = t.value[1:-1]
     _replace_escape_codes(t)    # Debe implementarse antes
