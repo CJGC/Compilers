@@ -82,15 +82,6 @@ class CheckProgramVisitor(NodeVisitor):
         def pop_symbol(self):
             self.current = self.current.parent # actualiza como tabla de símbolos actual, la tabla del padre asociado del nodo actual, (por ejemplo if's anidados)
 
-        def check_returns_invalid_statements(self,symtab):
-            for child in symtab.children: # comprueba cada tabla de símbolos hijo que tenga una tabla de símbolos padre
-                if child.id_statement == 'if': # si en la tabla hay uno con if
-                    self.check_returns(child.returnsSet) # comprobar el posible conjunto de returns en if
-                    self.check_returns_invalid_statements(child)
-                if child.id_statement == 'while':
-                    self.check_returns(child.returnsSet)
-                    self.check_returns_invalid_statements(child)
-
         def visit_Program(self,node):
             self.push_symtab('program',node) # el segundo parámetro es el nombre del nodo con el que se asociará la tabla de símbolos
             # Agrega nombre de tipos incorporados ((int, float, string) a la  tabla de símbolos
@@ -121,7 +112,7 @@ class CheckProgramVisitor(NodeVisitor):
             if not node.condition.type == gotype.boolean_type:
                 assert None, "Expresión boolena no válida en la declaración del while, error en la línea %s" % node.lineno
             else:
-                self.make_Symtab_statements('while',node)
+                self.visit(node.body)
 
         def visit_UnaryOp(self, node):
             self.visit(node.left)
@@ -300,6 +291,15 @@ class CheckProgramVisitor(NodeVisitor):
 #                                               Anexos
 # ------------------------------------------------------------------------------------------------
 
+        def check_returns_invalid_statements(self,symtab):
+            for child in symtab.children: # comprueba cada tabla de símbolos hijo que tenga una tabla de símbolos padre
+                if child.id_statement == 'if': # si en la tabla hay uno con if
+                    self.check_returns(child.returnsSet) # comprobar el posible conjunto de returns en if
+                    self.check_returns_invalid_statements(child)
+                if child.id_statement == 'while':
+                    self.check_returns(child.returnsSet)
+                    self.check_returns_invalid_statements(child)
+
         def check_returns(self,_set):
             if len(_set) != 0:
                 for return_ste in _set:
@@ -351,8 +351,8 @@ class CheckProgramVisitor(NodeVisitor):
 
             # 6. comprobar returns asociados
             # comprobar los return propios del cuerpo de la función
-            if len(self.current.returnsSet) == 0 and node.type != None:
-                assert None, "La función debería contener almenos 'EN SU CUERPO' un retorno del tipo en la que fue definida, error en la línea %s" % node.lineno
+            # if len(self.current.returnsSet) == 0 and node.type != None:
+            #     assert None, "La función debería contener almenos 'EN SU CUERPO' un retorno del tipo en la que fue definida, error en la línea %s" % node.lineno
             self.check_returns_on_func(self.current.returnsSet,node)
             # comprobar los return de los statements con tabla de símbolos contenidas en la función
             self.check_returns_on_statements_on_func(self.current,node)
@@ -378,6 +378,14 @@ class CheckProgramVisitor(NodeVisitor):
         def visit_Group(self,node):
             self.visit(node.expression)
             node.type = node.expression.type
+
+        def visit_WhileBody(self,node):
+            self.make_Symtab_statements('while',node)
+
+        def visit_FuncBody(self,node):
+            if not isinstance(node.statements,Empty):
+                self.visit(node.statements)
+
 # ----------------------------------------------------------------------
 #                       NO MODIFICAR NADA DE LO DE ABAJO
 # ----------------------------------------------------------------------
