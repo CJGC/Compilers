@@ -20,7 +20,6 @@ class SymbolTable(object):
             a la tabla de símbolos, y este ya esta definido
             '''
             pass
-            #print "Error la variable ya habia sido definida"
 
         class SymbolConflictError(Exception):
             '''
@@ -28,7 +27,6 @@ class SymbolTable(object):
             de variables, funciones ya definidas
             '''
             pass
-            #print "Error no se puede redefinir tipos de datos de variables, constantes o funciones ya previamente definidas"
 
         # se agregó nameStatementAsociated como atributo
         def __init__(self, id_statement, parent=None):
@@ -50,7 +48,7 @@ class SymbolTable(object):
             func foo(x:int, y:int)
             x:float;
             '''
-            if self.symtab.has_key(a): # si el símbolo ya fue agregado a la tabla (es una redeclaración)
+            if a in self.symtab: # si el símbolo ya fue agregado a la tabla (es una redeclaración)
                 if self.symtab[a].type.get_string() != v.type.get_string():  # si hubo una redifinición de tipo de dato (ejemplo int x, float x)
                     raise SymbolTable.SymbolConflictError() # lanza error relacionado y para ejecución
                 else: # si no es porque hubo un redifinición típica de variable (int x, int x)
@@ -58,7 +56,7 @@ class SymbolTable(object):
             self.symtab[a] = v # agrega el símbolo a la tabla si no hubo errores
 
         def lookup(self, a): # a-> ID asociado a un nodo, que será usado para verificar si ya existe en la tabla de símbolos
-            if self.symtab.has_key(a): # si existe el símbolo en la tabla de símbolos del statement actual que se está procesando
+            if a in self.symtab: # si existe el símbolo en la tabla de símbolos del statement actual que se está procesando
                 return self.symtab[a] # retornelo
             else: # en caso contrario, mire si este statement actual, tiene padre.
                 if self.parent != None: # si tiene padre, busque entonces en la tabla de símbolos del padre
@@ -213,13 +211,13 @@ class CheckProgramVisitor(NodeVisitor):
 
         def visit_Literal(self,node):
             # Adjunte un tipo apropiado a la constante
-            if isinstance(node.value, types.BooleanType): # node.value es una instancia válida de python?
+            if isinstance(node.value,bool): # node.value es una instancia válida de python?
                 node.type = self.current.lookup("bool") # se cambia symtab a current (crea el atributo type en el objeto Literal que almacena el objeto type nativo de go)
-            elif isinstance(node.value, types.IntType):
+            elif isinstance(node.value,int):
                 node.type = self.current.lookup("int") # se cambia symtab a current
-            elif isinstance(node.value, types.FloatType):
+            elif isinstance(node.value, float):
                 node.type = self.current.lookup("float") # se cambia symtab a current
-            elif isinstance(node.value, types.StringTypes):
+            elif isinstance(node.value, str):
                 node.type = self.current.lookup("string") # se cambia symtab a current
 
         def visit_PrintStatement(self, node):
