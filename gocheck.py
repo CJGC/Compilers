@@ -1,7 +1,7 @@
 # gocheck.py
 # coding: utf-8
 
-import sys, re, string, types
+import sys, re, string
 from errors import error
 from goast import *
 import gotype
@@ -50,9 +50,9 @@ class SymbolTable(object):
             '''
             if a in self.symtab: # si el símbolo ya fue agregado a la tabla (es una redeclaración)
                 if self.symtab[a].type.get_string() != v.type.get_string():  # si hubo una redifinición de tipo de dato (ejemplo int x, float x)
-                    raise SymbolTable.SymbolConflictError() # lanza error relacionado y para ejecución
-                else: # si no es porque hubo un redifinición típica de variable (int x, int x)
-                    raise SymbolTable.SymbolDefinedError() # lanzar error relacionado y para ejecución
+                    raise SymbolTable.SymbolConflictError() # lanza error relacionado
+                else: # si no es, es porque hubo redifinición de variable (int x, float x)
+                    raise SymbolTable.SymbolDefinedError() # lanzar error relacionado
             self.symtab[a] = v # agrega el símbolo a la tabla si no hubo errores
 
         def lookup(self, a): # a-> ID asociado a un nodo, que será usado para verificar si ya existe en la tabla de símbolos
@@ -101,98 +101,119 @@ class CheckProgramVisitor(NodeVisitor):
         def visit_IfStatement(self, node):
             self.visit(node.condition)
             if not node.condition.type == gotype.boolean_type:
-                assert None, "Expresión booleana no válida en la declaración if, error en la línea %s" % node.lineno
-            else:
-                self.visit(node.then_b)
-                if node.else_b:
-                    self.visit(node.else_b)
+                error(node.lineno,"Error, expresión booleana no válida")
+            self.visit(node.then_b)
+            if node.else_b:
+                self.visit(node.else_b)
 
         def visit_WhileStatement(self,node):
             self.visit(node.condition)
             if not node.condition.type == gotype.boolean_type:
-                assert None, "Expresión boolena no válida en la declaración del while, error en la línea %s" % node.lineno
-            else:
-                self.visit(node.body)
+                error(node.lineno,"Error, expresión booleana no válida")
+            self.visit(node.body)
 
         def visit_UnaryOp(self, node):
+            node.type = None # tipo None por defecto
             self.visit(node.left)
-            assert node.left.type, "Los operadores unarios no deben ser valores nulos, error en la línea %s" % node.lineno
+            if not node.left.type:
+                error(node.lineno,"Error, expresión unaria no debe ser nula")
             # 1. Asegúrese que la operación es compatible con el tipo
-            if not golex.operators[node.op] in node.left.type.un_ops:
-                assert None, "Operación unaria no soportada con este tipo, error en la línea %s" % node.lineno
+            elif not golex.operators[node.op] in node.left.type.un_ops:
+                error(node.lineno,"Error, expresión no soporta el operador unario '%s'" % node.op)
             # 2. Ajuste el tipo resultante al mismo del operando
-            node.type = node.left.type
+            else: node.type = node.left.type
 
         def visit_BinaryOp(self, node):
             self.visit(node.left)
             self.visit(node.right)
+            node.type = None # tipo None por defecto
             # 1. Asegúrese que los operandos left y right tienen el mismo tipo
             if not node.left.type == node.right.type:
-                assert None, "Los operandos binarios no son del mismo tipo, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, las expresiones del operador deben ser del mismo tipo")
             elif node.left.type == None:
-                assert None, "Los operadores binarios no deben ser valores nulos, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, las expresiones del operador no deben ser valores nulos")
             # 2. Asegúrese que la operación está soportada
             elif not golex.operators[node.op] in node.left.type.bin_ops:
-                assert None, "Operación no soportada con los tipos dados en la expresión, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, operación '%s' no soportada con los tipos de las expresiones" % node.op)
             # 3. Asigne el tipo resultante
-            node.type = node.left.type
+            else: node.type = node.left.type
 
         def visit_AssignmentStatement(self,node):
             # 1. Asegúrese que la localización de la asignación está definida
             sym = self.current.lookup(node.location.id) # se cambia symtab a current (busca en la tabla de símbolos si location ya habia sido declarada)
-            assert sym, "'%s' no ha sido declarado antes, error en la línea '%s'" % (node.location.id,node.lineno)
+            if sym == None:
+                error(node.lineno,"Error, el símbolo '%s' no ha sido declarado"%node.location.id)
             # 2. Revise que la asignación es permitida, pe. sym no es una constante
-            assert not(isinstance(sym,ConstDeclaration)) , "'%s' es una constante, su valor no puede cambiar, error en la línea %s" % (node.location.id,node.lineno)
+            if isinstance(sym,ConstDeclaration):
+                error(node.lineno,"Error, el símbolo '%s' es constante, su valor no se puede cambiar"%node.location.id)
             # 3. Revise que los tipos coincidan.
-            self.visit(node.value)
-            assert node.value.type, "El valor del lado derecho de la asignación no debe ser nulo, error en la línea %s" % node.lineno
-            assert sym.type == node.value.type, "El tipo de dato del valor del lado derecho de la asignación, no coincide con el tipo de dato del símbolo definido '%s', error en la línea %s" % (sym.typename.id,node.lineno)
+            if sym != None and not isinstance(sym,ConstDeclaration): # si está declaro y no es constante
+                if isinstance(node.value, RelationalOp):
+                    error(node.lineno,"Error, no debe haber operador relacional en una asignación")
+                    return
+                self.visit(node.value)
+                if not node.value.type: # si el valor no tiene tipo
+                    error(node.lineno,"Error, no se puede asignar un valor nulo")
+                elif sym.type != node.value.type: # si difiere el tipo del valor del símbolo
+                    error(node.lineno,"Error, la asignación no concuerda con el tipo del símbolo '%s'"%sym.typename.id)
 
         def visit_ConstDeclaration(self,node):
             # 1. Revise que el nombre de la constante no se ha definido
             if self.current.lookup(node.id):
-                error(node.lineno, "Error, la constante '%s' ya habia sido definida antes" % node.id)
-                #assert None, "El símbolo '%s' ya habia sido definida antes, error en la línea '%s'" % (node.id,node.lineno)
+                error(node.lineno, "Error, el símbolo '%s' ya se ha declarado" % node.id)
             # 2. Agrege una entrada a la tabla de símbolos
             else:
-                self.current.add(node.id, node)
-            #print node.value.type
-            self.visit(node.value)
-            #print node.value.type
-            assert node.value.type, "Las constantes no pueden recibir valores nulos, error en la línea %s" % node.lineno
-            node.type = node.value.type # crea un atributo type que almacena el tipo definido en el objeto Literal (ver visit_Literal)
+                if isinstance(node.value,RelationalOp):
+                    error(node.lineno,"Error, no debe haber operador relacional en la declaración de una constante")
+                    return
+                self.visit(node.value)
+                if not node.value.type:
+                    error(node.lineno, "Error, el símbolo '%s' no puede recibir un valor nulo" % node.id)
+                else:
+                    node.type = node.value.type # crea un atributo type que almacena el tipo definido en el objeto Literal (ver visit_Literal)
+                    self.current.add(node.id, node)
 
         def visit_VarDeclaration(self,node):
-            self.visit(node.typename)
-            node.type = node.typename.type
+            self.visit(node.typename) # comprobar que el tipo de dato fue escrito correctamente
+            if not node.typename.type: return # si el tipo de la variable no está correctamente definido, no compruebe nada más
             # 1. Revise que el nombre de la variable no se ha definido
             if self.current.lookup(node.id): # se cambió symtab como current (current contiene la tabla de símbolos de program, y mira si la variable ya está en la tabla)
-                error(node.lineno, "Error, la variable '%s' ya habia sido definido antes" % node.id)
-                #assert None, "El símbolo '%s' ya habia sido definido antes, error en la línea '%s'" % (node.id,node.lineno)
+                error(node.lineno, "Error, el símbolo '%s' ya se ha declarado" % node.id)
             # 2. Agrege la entrada a la tabla de símbolos
             else:
-                self.current.add(node.id, node) # se cambió symtab por current (se agrega a la tabla de símbolos si no está)
             # 3. Revise que el tipo de la expresión (si lo hay) es el mismo
-            if node.value:
-                self.visit(node.value)
-                assert node.value.type, "Las variables no pueden recibir valores nulos, error en la línea %s" % node.lineno
-                assert(node.typename.id == node.value.type.name), "El valor del lado derecho de la asignación no es valor que concuerde con el tipo de dato '%s' definido en la variable, error en la línea %s" % (node.typename.id ,node.value.lineno)
-            # 4. Si no hay expresión, establecer un valor inicial para el valor
-            else:
-                node.value = None
+                if node.value != None: # si en la decaración hay una asignación
+                    if isinstance(node.value,RelationalOp):
+                        error(node.lineno,"Error, no debe haber operador relacional en declaración de variable")
+                        return
+                    self.visit(node.value)
+                    if node.value.type == None: # si el valor de la derecha es de tipo nulo
+                        error(node.lineno,"Error, el símbolo '%s' no puede recibir un valor nulo" % node.id)
+                    elif node.typename.id != node.value.type.name: # si el tipo de la derecha no concuerda con el de la variable
+                        error(node.lineno,"Error, el valor no concuerda con el tipo del símbolo '%s'" % node.typename.id)
+                    else: # si el valor concuerda con el tipo de la variable, regístrela
+                        node.type = node.value.type
+                        self.current.add(node.id, node) # se cambió symtab por current (se agrega a la tabla de símbolos si no está)
+
+                else: # si no hay asignación, entonces sólo guardela
+                    node.type = node.typename.type
+                    self.current.add(node.id,node)
 
         def visit_Typename(self,node):
             # 1. Revisar que el nombre de tipo es válido que es actualmente un tipo
             # Es necesario crear el node.type de un nodo parar que sus padres vallan definiendo este tipo y así pueda comprobar si no hay discrepancias de este tipo 'var a int = 3.0'
             node.type = self.current.lookup(node.id) # para comprobar si el nombre del tipo de dato proporcionado de un símbolo declarada previamente, si corresponda a un tipo de dato incorporado válido de minigo
-            assert(node.type), "El tipo de dato utilizado '%s' no es tipo de dato nativo de go, error en la línea %s" % (node.id, node.lineno) # si el tipo de dato incorporado de la variable definida es válido, lo deja pasar, en caso contrario manda error
+            if not node.type:
+                error(node.lineno,"Error, tipo '%s' no definido correctamente" % node.id)
 
         def visit_Location(self,node):
             # 1. Revisar que la localización es una variable válida o un valor constante
             sym = self.current.lookup(node.id)
-            assert(sym), "El símbolo '%s' no ha sido declarado previamente, error en la línea %s" % (node.id,node.lineno)
+            if sym == None:
+                error(node.lineno,"Error, el símbolo '%s' no ha sido declarado" % node.id)
+                node.type = sym
             # 2. Asigne el tipo de la localización al nodo
-            node.type = sym.type
+            if sym != None: node.type = sym.type # si sym fue declarado entonces deme su tipo
 
         def visit_LoadLocation(self,node):
             # 1. Revisar que Load localización cargada es válida.
@@ -213,7 +234,8 @@ class CheckProgramVisitor(NodeVisitor):
 
         def visit_PrintStatement(self, node):
             self.visit(node.expr)
-            assert node.expr.type, "El dato que se está imprimiendo no existe, error en la línea %s" % node.lineno
+            if node.expr.type == None:
+                error(node.lineno,"Error, la expresión que se intenta imprimir no puede ser nula")
 
         def visit_Extern(self, node):
             # registe el nombre de la función
@@ -222,34 +244,39 @@ class CheckProgramVisitor(NodeVisitor):
             node.type = node.func_prototype.type
 
         def visit_FuncPrototype(self, node):
+            node.type = None # tipo None por defecto
             if self.current.lookup(node.id):
-                assert(None), "La función extern ya había sido declarada antes, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, la función '%s' extern ya se ha declarado" % node.id)
             else:
-                self.current.add(node.id,node) # guardando el id de la función y el objeto
-            self.visit(node.typename)
-            node.type = node.typename.type
+                self.visit(node.typename)
+                if node.typename.type != None:
+                    self.current.add(node.id,node) # guardando el id de la función y el objeto
+                    node.type = node.typename.type
 
-            # creando tabla de símbolos para extern función
-            self.push_symtab('extern',node)
-            node.symtab.add("int",gotype.int_type)
-            node.symtab.add("float",gotype.float_type)
-            node.symtab.add("string",gotype.string_type)
-            node.symtab.add("bool",gotype.boolean_type)
+                    # creando tabla de símbolos para extern función
+                    self.push_symtab('extern',node)
+                    node.symtab.add("int",gotype.int_type)
+                    node.symtab.add("float",gotype.float_type)
+                    node.symtab.add("string",gotype.string_type)
+                    node.symtab.add("bool",gotype.boolean_type)
 
-            # registar parámetros en tabla de símbolos de la función extern
-            self.visit(node.parameters)
+                    # registar parámetros en tabla de símbolos de la función extern
+                    self.visit(node.parameters)
 
-            # entregar dominio
-            self.pop_symbol()
+                    # entregar dominio
+                    self.pop_symbol()
 
         def visit_Parameters(self, node):
             for p in node.param_decls:
                 self.visit(p)
 
         def visit_ParamDecl(self, node):
-            self.visit(node.typename) # comprobar que el tipo fue escrito correctamente y es nativo de go
-            node.type = node.typename.type # si no hubo problemas, definir el tipo nativo de go para el parámetro
-            self.current.add(node.id,node) # finalmente registrar en la tabla de símbolos de la función el parámetro
+            if not node.id in self.current.symtab: # consultar primero que un parámetro todavía no está en la tabla de símbolos
+                self.visit(node.typename) # comprobar que el tipo fue escrito correctamente y es nativo de go
+                node.type = node.typename.type # si no hubo problemas, definir el tipo nativo de go para el parámetro
+                self.current.add(node.id,node) # finalmente registrar en la tabla de símbolos de la función el parámetro
+            else:
+                error(node.lineno,"Error, el parámetro ya fue declarado")
 
         def visit_Group(self, node):
             self.visit(node.expression)
@@ -258,34 +285,39 @@ class CheckProgramVisitor(NodeVisitor):
         def visit_RelationalOp(self, node):
             self.visit(node.left)
             self.visit(node.right)
+            node.type = None # tipo None por defecto
             if not node.left.type == node.right.type:
-                assert None, "Operandos de relación no son del mismo tipo, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, expresiones de relación no son del mismo tipo")
             elif node.left.type == None:
-                assert None, "En expresiones relacionales no deben haber valores nulos, error en la línea %s" % node.lineno
+                error(node.lineno,"Error, expresiones de relación no deben ser nulos")
             elif not golex.operators[node.op] in node.left.type.bin_ops:
-                assert None, "Los operandos de la relación no tienen soporte con el operando '%s', error en la línea %s" % (node.op, node.lineno)
-            node.type = self.current.lookup('bool')
+                error(node.lineno,"Error, expresiones de relación no tienen soporte con el operador '%s'"%node.op)
+            else: node.type = self.current.lookup('bool')
 
         def visit_FunCall(self, node):
+            node.type = None # tipo None por defecto
             # 1. comprobar que la función fue declarada previamente
             sym = self.current.lookup(node.id)
-            if isinstance(sym,FuncDeclaration) or isinstance(sym,FuncPrototype): pass
-            else: assert None, "Función no previamente declarada, error en la línea %s"% node.lineno
-            # 2. comprobar parámetros en la llamada
-            node.type = sym.type # en llamada a función hay que saber el tipo que retorna esta función
-            node.params.func = sym #dando el objeto función asociado a los parámetros en la llamada de la función
-            node.params.lineno = node.lineno # dando el número de línea correspondiente
-            self.visit(node.params)
+            # 2. comprobar parámetros en la llamada si sym es instancia válida de alguna función
+            if isinstance(sym,FuncDeclaration) or isinstance(sym,FuncPrototype):
+                node.type = sym.type # en llamada a función hay que saber el tipo que retorna esta función
+                node.params.func = sym #dando el objeto función asociado a los parámetros en la llamada de la función
+                node.params.lineno = node.lineno # dando el número de línea correspondiente
+                self.visit(node.params)
+            else: error(node.lineno,"Error, llamada a función '%s' no declarada" % node.id)
 
         def visit_ExprList(self, node):
-            assert len(node.expressions) == len(node.func.parameters.param_decls), "La cantidad de parámetros en la llamada no coincide con la cantidad definidos, error en la línea %s" % node.lineno
-            for expr, param in zip(node.expressions,node.func.parameters.param_decls):
-                self.visit(expr)
-                if not isinstance(expr,Empty):
-                    assert expr.type == param.type, "No concuerdan todos los tipos de los parámetros en llamada a la función, error en la línea %s " % node.lineno
+            if len(node.expressions) != len(node.func.parameters.param_decls):
+                error(node.lineno,"Error, la cantidad de parámetros que se están pasando en llamada a función, no concuerda con la cantidad con la que fue definida")
+            else:
+                for expr, param in zip(node.expressions,node.func.parameters.param_decls):
+                    self.visit(expr)
+                    #if not isinstance(expr,Empty):
+                    if expr.type != param.type:
+                        error(node.lineno,"Error, no concuerdan todos los tipos de los parámetros en llamada a la función")
 
         def visit_Empty(self, node):
-                pass
+            node.type = None
 
 # ------------------------------------------------------------------------------------------------
 #                                               Anexos
@@ -303,7 +335,7 @@ class CheckProgramVisitor(NodeVisitor):
         def check_returns(self,_set):
             if len(_set) != 0:
                 for return_ste in _set:
-                    assert None, "El return debe ser usado únicamente dentro de funciones, error en la línea %s" % return_ste.lineno
+                    error(return_ste.lineno,"Error, el return debe estar dentro del cuerpo de una función")
 
         def make_Symtab_statements(self,id_statement,node):
             self.push_symtab(id_statement,node) # crear la tabla de símbolos para statements y configurar current con esa tabla
@@ -322,43 +354,39 @@ class CheckProgramVisitor(NodeVisitor):
             self.make_Symtab_statements('else',node)
 
         def visit_FuncDeclaration(self,node):
+            node.type = None # tipo None por defecto
             # 1. comprobar si el tipo que retorna (si existe) es nativo de go
             if not isinstance(node.typename,Empty):
                 self.visit(node.typename)
                 node.type = node.typename.type
-            else:
-                node.type = None
 
             # 2. comprobar que la función no esté definida antes
             if self.current.lookup(node.id):
-                #error(node.lineno, "La función %s ya había sido declarada antes" % node.id)
-                assert None, "La función '%s' ya había sido definido antes, error en la línea '%s'" % (node.id,node.lineno)
+                error(node.lineno, "La función %s ya se ha declarado antes" % node.id)
             else:
                 self.current.add(node.id,node) # guardando el id de la función y el objeto en la tabla de su padre
 
             # 3. crear tabla de símbolos para el cuerpo de la función
-            self.push_symtab('function',node)
-            node.symtab.add("int",gotype.int_type)
-            node.symtab.add("float",gotype.float_type)
-            node.symtab.add("string",gotype.string_type)
-            node.symtab.add("bool",gotype.boolean_type)
+                self.push_symtab('function',node)
+                node.symtab.add("int",gotype.int_type)
+                node.symtab.add("float",gotype.float_type)
+                node.symtab.add("string",gotype.string_type)
+                node.symtab.add("bool",gotype.boolean_type)
 
             # 4. comprobar parámetros de función y anexarlos a la tabla de símbolos
-            self.visit(node.parameters)
+                self.visit(node.parameters)
 
             # 5. comprobar cuerpo de la función
-            self.visit(node.statements)
+                self.visit(node.statements)
 
             # 6. comprobar returns asociados
-            # comprobar los return propios del cuerpo de la función
-            # if len(self.current.returnsSet) == 0 and node.type != None:
-            #     assert None, "La función debería contener almenos 'EN SU CUERPO' un retorno del tipo en la que fue definida, error en la línea %s" % node.lineno
-            self.check_returns_on_func(self.current.returnsSet,node)
-            # comprobar los return de los statements con tabla de símbolos contenidas en la función
-            self.check_returns_on_statements_on_func(self.current,node)
+                # comprobar los return propios del cuerpo de la función
+                self.check_returns_on_func(self.current.returnsSet,node)
+                # comprobar los return dentro de los statements con tabla de símbolos
+                self.check_returns_on_statements_on_func(self.current,node)
 
             # 7. entregar dominio a tabla de símbolos program
-            self.pop_symbol()
+                self.pop_symbol()
 
         def check_returns_on_statements_on_func(self,symtab,node):
             for child in symtab.children:
@@ -367,8 +395,10 @@ class CheckProgramVisitor(NodeVisitor):
 
         def check_returns_on_func(self,_set,node):
             for return_ste in _set:
-                assert node.type, "Se está definiendo un retorno sin que la función deba devolver algo, error en la línea %s" % return_ste.lineno
-                assert return_ste.type == node.type, "El valor del retorno de la función debe coincidir con el tipo de dato con la que fue definida, error en la línea %s" % return_ste.lineno
+                if not node.type: # Si la función no tiene un tipo definido
+                    error(return_ste.lineno,"Error, se está estableciendo un return dentro de una función que no devuelve nada")
+                elif return_ste.type != node.type: # si el tipo que retorna no concuerda con el definido en la función
+                    error(return_ste.lineno,"Error, el tipo del return no concuerda con el tipo definido de la función")
 
         def visit_ReturnStatement(self,node):
             self.visit(node.expression) # visitand la expression para saber que tipo retorna
