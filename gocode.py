@@ -5,7 +5,7 @@ Proyecto 4 - Parte 1
 La generación de código para MiniGo. En este proyecto, se va a convertir
 el AST en código de maquina intermedio conocido como Asignación estática
 única (SSA - Single Static Assignment).
-Hay algunas partes importantes que usted necesita hacer para este 
+Hay algunas partes importantes que usted necesita hacer para este
 trabajo.  Por favor, lea cuidadosamente antes de empezar:
 
 Asignación Estática ünica
@@ -31,11 +31,11 @@ simples:
 	int_7 = int_5 - int_6
 
 En este código, las variables int_n son simplemente temporales
-utilizadas en el ejercicio del cálculo. Una característica crítica de 
-SSA es que tales varibles temporales son solamente asignadas una sola 
+utilizadas en el ejercicio del cálculo. Una característica crítica de
+SSA es que tales varibles temporales son solamente asignadas una sola
 vez (asignación única) y nunca reutilizadas. Por lo tanto, si se fuera
-a evaluar otra expresión, sólo tendría que seguir incrementando los 
-números. Por ejemplo, si se evaluara 10+20+30, se tendría código como 
+a evaluar otra expresión, sólo tendría que seguir incrementando los
+números. Por ejemplo, si se evaluara 10+20+30, se tendría código como
 este:
 
 	int_8 = 10
@@ -45,8 +45,8 @@ este:
 	int_12 = int_11 + int_11
 
 SSA tiene la intensión de imitar las instrucciones de bajo-nivel que se
-podría llevar a cabo en una CPU. Por ejemplo, las instrucciones 
-anteriores pueden ser traducidas a instrucciones de máquina de 
+podría llevar a cabo en una CPU. Por ejemplo, las instrucciones
+anteriores pueden ser traducidas a instrucciones de máquina de
 bajo-nivel (para una CPU hipotética) de esta manera:
 
 	MOVI #2, R1
@@ -57,11 +57,11 @@ bajo-nivel (para una CPU hipotética) de esta manera:
 	MOVI #5, R6
 	SUB R5, R6, R7
 
-Otro beneficio de SSA es que es muy fácil de codificar y manipular 
+Otro beneficio de SSA es que es muy fácil de codificar y manipular
 usando estrusturas de datos simples como tuplas. Por ejemplo, se podría
 codifica la secuencia anterior de operaciones como una lista como esto:
 
-	[ 
+	[
 		('movi', 2, 'int_1'),
 		('movi', 3, 'int_2'),
 		('movi', 4, 'int_3'),
@@ -73,15 +73,15 @@ codifica la secuencia anterior de operaciones como una lista como esto:
 
 Tratando con Variables
 ======================
-En su programa, probablemente va a tener algunas variables que usará y 
+En su programa, probablemente va a tener algunas variables que usará y
 le asignará diferentes valores. Por ejemplo:
 
 	a = 10 + 20;
 	b = 2 * a;
 	a = a + 1;
 
-En "SSA puro", todas las variables en realidad serán versionadas como 
-las temporales en las anteriores expresiones. Por ejemplo, tendía que 
+En "SSA puro", todas las variables en realidad serán versionadas como
+las temporales en las anteriores expresiones. Por ejemplo, tendía que
 emitir código como este:
 
 	int_1 = 10
@@ -89,12 +89,12 @@ emitir código como este:
 	a_1 = int_1 + int_2
 	int_3 = 2
 	b_1 = int_3 * a_1
-	int_4 = 1 
+	int_4 = 1
 	a_2 = a_1 + int_4
 	...
 
-Por razones que tendrá sentido más adelante, vamos a tratar las 
-variables declaradas como localizaciones de memoria y acceder a ellas 
+Por razones que tendrá sentido más adelante, vamos a tratar las
+variables declaradas como localizaciones de memoria y acceder a ellas
 usando las instrucciones load/store. Por ejemplo:
 
 	int_1 = 10
@@ -150,7 +150,7 @@ de código SSA representado como tuplas de la forma
 
 	(operacion, operandos, ..., destinacion)
 
-Para empezar, su código SSA sólo debe contener las siguientes 
+Para empezar, su código SSA sólo debe contener las siguientes
 operaciones:
 
 	('alloc_type',varname) # Allocate a variable of a given type
@@ -165,12 +165,12 @@ operaciones:
 	('uneg_type',source,target) # target = -source
 	('print_type',source) # Print value of source
 '''
-import mgoast
-import mgoblock
+import goast # se cambia a mgoast por goast
+#import mgoblock
 from collections import defaultdict
 
-# PASO 1: Mapee los nombres de los operadores símbolos tales 
-# como +, -, *, / a los nombres actuales de opcode 'add', 'sub', 
+# PASO 1: Mapee los nombres de los operadores símbolos tales
+# como +, -, *, / a los nombres actuales de opcode 'add', 'sub',
 # 'mul', 'div' a ser emitidos en el código SSA. Esto es fácil de hacer
 # usando diccionarios:
 
@@ -190,7 +190,7 @@ unary_ops = {
 # secuencia de instrucciones SSA en forma de tuplas. Utilice la
 # descripción anterior de los op-codes permitidos como una guía.
 
-class GenerateCode(mgoast.NodeVisitor):
+class GenerateCode(goast.NodeVisitor):
 	'''
 	Clase Node visitor que crea secuencia de instrucciones codificadas
 	3-direcciones.
@@ -211,11 +211,11 @@ class GenerateCode(mgoast.NodeVisitor):
 		'''
 		Crea una variable temporal del tipo dado
 		'''
-		name = "__%s_%d" % (typeobj.name, self.versions[typeobj.name])
+		name = "%s_%d" % (typeobj.name, self.versions[typeobj.name])
 		self.versions[typeobj.name] += 1
 		return name
 
-	# Debe implementar métodos visit_Nodename para todos los otros 
+	# Debe implementar métodos visit_Nodename para todos los otros
 	# nodos AST. En su código, tendrá que crear las instrucciones
 	# y agregarlas a la lista self.code.
 
@@ -293,7 +293,7 @@ class GenerateCode(mgoast.NodeVisitor):
 
 	def visit_LoadLocation(self,node):
 		target = self.new_temp(node.type)
-		inst = ('load_'+node.type.name, node.name, target)
+		inst = ('load_'+node.type.name, node.name.id, target)
 		self.code.append(inst)
 		node.gen_location = target
 
@@ -321,19 +321,23 @@ class GenerateCode(mgoast.NodeVisitor):
 	def visit_AssignmentStatement(self,node):
 		self.visit(node.value)
 
-		inst = ('store_'+node.value.type.name, node.value.gen_location, node.location)
+		inst = ('store_'+node.value.type.name, node.value.gen_location, node.location.id)
 		self.code.append(inst)
 
 	def visit_UnaryOp(self,node):
 		self.visit(node.left)
 		target = self.new_temp(node.type)
 		opcode = unary_ops[node.op] + "_" + node.left.type.name
-		inst = (opcode, node.left.gen_location)
+		inst = (opcode,node.left.gen_location,target) # se agregó target como tercer argumento
 		self.code.append(inst)
 		node.gen_location = target
 
+	# se agregó contenido al nodo if
 	def visit_IfStatement(self,node):
-		pass
+		self.visit(node.condition)
+		self.visit(node.then_b)
+		if node.else_b:
+			self.visit(node.else_b)
 
 	#def visit_Group(self,node):
 	# self.visit(node.expr)
@@ -353,15 +357,15 @@ class GenerateCode(mgoast.NodeVisitor):
 
 # PASO 3: Pruebas
 #
-# Trate de correr este programa con el archivo de entrada 
-# Project4/Tests/good.g y vea el resultado de la secuencia de 
+# Trate de correr este programa con el archivo de entrada
+# Project4/Tests/good.g y vea el resultado de la secuencia de
 # código SSA.
 #
 # bash % python mgocode.py good.g
 # ... mire la salida ...
 #
-# 
-# Salidas de ejemplo pueden encontrarse en Project4/Tests/good.out. 
+#
+# Salidas de ejemplo pueden encontrarse en Project4/Tests/good.out.
 # Mientras esté codificando, podrá desear romper el código en partes
 # mas manejables.  Piense en pruebas unitarias.
 
@@ -377,14 +381,14 @@ def generate_code(node):
 	return gen
 
 if __name__ == '__main__':
-	import mgolex
-	import mgoparse
-	import mgocheck
+	import golex
+	import goparser
+	import gocheck
 	import sys
 	from errors import subscribe_errors, errors_reported
 
 	lexer = golex.make_lexer()
-	parser = goparse.make_parser()
+	parser = goparser.make_parser()
 	with subscribe_errors(lambda msg: sys.stdout.write(msg+"\n")):
 		program = parser.parse(open(sys.argv[1]).read())
 
