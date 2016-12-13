@@ -165,7 +165,7 @@ operaciones:
 	('uneg_type',source,target) # target = -source
 	('print_type',source) # Print value of source
 '''
-from goast import * # se cambió a mgoast
+import goast#from goast import * # se cambió a mgoast
 #import mgoblock
 from collections import defaultdict
 
@@ -190,7 +190,7 @@ unary_ops = {
 # secuencia de instrucciones SSA en forma de tuplas. Utilice la
 # descripción anterior de los op-codes permitidos como una guía.
 
-class GenerateCode(NodeVisitor): # se cambia goast.NodeVisitor por NodeVisitor
+class GenerateCode(goast.NodeVisitor): # se cambia goast.NodeVisitor por NodeVisitor
 	'''
 	Clase Node visitor que crea secuencia de instrucciones codificadas
 	3-direcciones.
@@ -359,7 +359,7 @@ class GenerateCode(NodeVisitor): # se cambia goast.NodeVisitor por NodeVisitor
 	# se habilitó nodo visit_ExprList, anexó y modificó algunas instrucciones
 	def visit_ExprList(self,node):
 		for expr in node.expressions:
-			if not isinstance(expr,Empty):
+			if not isinstance(expr,goast.Empty):
 				self.visit(expr)
 				# inst = ('print_'+expr.type.name, expr.gen_location)
 				# self.code.append(inst)
