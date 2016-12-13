@@ -165,7 +165,7 @@ operaciones:
 	('uneg_type',source,target) # target = -source
 	('print_type',source) # Print value of source
 '''
-import goast # se cambia a mgoast por goast
+from goast import * # se cambió a mgoast
 #import mgoblock
 from collections import defaultdict
 
@@ -190,7 +190,7 @@ unary_ops = {
 # secuencia de instrucciones SSA en forma de tuplas. Utilice la
 # descripción anterior de los op-codes permitidos como una guía.
 
-class GenerateCode(goast.NodeVisitor):
+class GenerateCode(NodeVisitor): # se cambia goast.NodeVisitor por NodeVisitor
 	'''
 	Clase Node visitor que crea secuencia de instrucciones codificadas
 	3-direcciones.
@@ -332,28 +332,37 @@ class GenerateCode(goast.NodeVisitor):
 		self.code.append(inst)
 		node.gen_location = target
 
-	# se agregó contenido al nodo if
+	# se implementó el nodo if
 	def visit_IfStatement(self,node):
 		self.visit(node.condition)
 		self.visit(node.then_b)
 		if node.else_b:
 			self.visit(node.else_b)
 
-	#def visit_Group(self,node):
-	# self.visit(node.expr)
-	# inst = ('print_'+node.expr.type.name, node.expr.gen_location)
-	# self.code.append(inst)
+	# se habilitó nodo visit_Group, anexó y modificó algunas instrucciones
+	def visit_Group(self,node):
+		self.visit(node.expression)
+		# inst = ('print_'+node.expression.type.name, node.expression.gen_location)
+		# self.code.append(inst)
+		node.gen_location = node.expression.gen_location
 
-	#def visit_FunCall(self,node):
-	# self.visit(node.expr)
-	# inst = ('print_'+node.expr.type.name, node.expr.gen_location)
-	# self.code.append(inst)
+	# se habilitó nodo visit_FunCall, anexó y modificó algunas instrucciones
+	def visit_FunCall(self,node):
+		self.visit(node.params)
+		if node.type:
+			target = self.new_temp(node.type)
+			inst = ('function_call_'+node.type.name, target)
+			#inst = ('print_'+node.type.name, target)
+			self.code.append(inst)
+			node.gen_location = target
 
-	#def visit_ExprList(self,node):
-	# self.visit(node.expr)
-	# inst = ('print_'+node.expr.type.name, node.expr.gen_location)
-	# self.code.append(inst)
-
+	# se habilitó nodo visit_ExprList, anexó y modificó algunas instrucciones
+	def visit_ExprList(self,node):
+		for expr in node.expressions:
+			if not isinstance(expr,Empty):
+				self.visit(expr)
+				# inst = ('print_'+expr.type.name, expr.gen_location)
+				# self.code.append(inst)
 
 # PASO 3: Pruebas
 #
